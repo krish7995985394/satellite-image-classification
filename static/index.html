@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>EuroSAT — Classifier</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .thumb { width:128px; height:128px; object-fit:cover; border-radius:8px; border:1px solid #ccc; cursor:pointer; }
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-8">
+  <main class="bg-white shadow rounded-xl p-6 w-full max-w-md">
+
+    <h1 class="text-xl font-semibold mb-4 text-center">Image Classifier</h1>
+
+    <!-- Hidden file input -->
+    <input id="fileInput" type="file" accept="image/*" class="hidden" />
+
+    <!-- Image Preview Area (clickable) -->
+    <div id="previewBox"
+         class="border-2 border-dashed border-gray-300 rounded-xl p-4 flex items-center justify-center cursor-pointer hover:border-gray-500">
+      <img id="preview" class="thumb hidden" />
+      <span id="placeholder" class="text-gray-400">Click to select an image</span>
+    </div>
+
+    <!-- Classify button -->
+    <button id="classifyBtn"
+            class="w-full mt-4 py-2 bg-black text-white rounded disabled:bg-gray-400"
+            disabled>
+      Classify
+    </button>
+
+    <!-- Status text -->
+    <div id="status" class="mt-3 text-sm text-gray-500 text-center"></div>
+
+    <!-- Results -->
+    <div id="results" class="mt-6 hidden">
+      <h2 class="text-lg font-medium mb-2">Predictions</h2>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs text-gray-500">
+            <th>Label</th><th>Score</th>
+          </tr>
+        </thead>
+        <tbody id="predTable"></tbody>
+      </table>
+    </div>
+
+  </main>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+const previewBox = document.getElementById('previewBox');
+const preview = document.getElementById('preview');
+const placeholder = document.getElementById('placeholder');
+const classifyBtn = document.getElementById('classifyBtn');
+const status = document.getElementById('status');
+const results = document.getElementById('results');
+const predTable = document.getElementById('predTable');
+
+let selectedFile = null;
+
+// Clicking preview box opens file chooser
+previewBox.addEventListener('click', () => fileInput.click());
+
+// When image selected
+fileInput.addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+
+  selectedFile = f;
+  preview.src = URL.createObjectURL(f);
+  preview.classList.remove('hidden');
+  placeholder.classList.add('hidden');
+
+  classifyBtn.disabled = false;
+  status.textContent = `Ready: ${f.name}`;
+  results.classList.add('hidden');
+});
+
+// Classify
+classifyBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+
+  status.textContent = "Classifying…";
+  classifyBtn.disabled = true;
+
+  try {
+    const fd = new FormData();
+    fd.append("image", selectedFile, selectedFile.name);
+
+    const res = await fetch("/predict", { method: "POST", body: fd });
+    if (!res.ok) throw new Error("Server error");
+
+    const json = await res.json();
+    const preds = json[selectedFile.name];
+
+    // build table
+    predTable.innerHTML = "";
+    preds.forEach(p => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="py-1">${p.label}</td><td class="py-1">${p.score.toFixed(4)}</td>`;
+      predTable.appendChild(tr);
+    });
+
+    results.classList.remove("hidden");
+    status.textContent = "Done.";
+  } catch (err) {
+    status.textContent = "Error: " + err.message;
+  } finally {
+    classifyBtn.disabled = false;
+  }
+});
+</script>
+
+</body>
+</html>

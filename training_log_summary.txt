@@ -1,0 +1,4 @@
+Best validation accuracy: 1.0000 at epoch 1
+Final training accuracy: 0.9941
+Final validation accuracy: 0.9815
+Epochs: 65
